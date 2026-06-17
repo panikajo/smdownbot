@@ -16,10 +16,9 @@ def main_menu_keyboard(lang: str = "en", show_buy: bool = True, show_language: b
         last.append(KeyboardButton(text=t(lang, "btn_language")))
     if last:
         rows.append(last)
-    # Add group/channel buttons
+    # Add bot button
     rows.append([
-        KeyboardButton(text=t(lang, "btn_add_group")),
-        KeyboardButton(text=t(lang, "btn_add_channel")),
+        KeyboardButton(text=t(lang, "btn_add_bot"))
     ])
     if is_admin:
         rows.append([KeyboardButton(text=t(lang, "btn_admin"))])
