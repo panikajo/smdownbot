@@ -203,24 +203,24 @@ async def handle_link(message: Message, bot: Bot):
     url = message.text.strip()
 
     if is_downloading(user_id):
-        await message.answer(t(lang, "already_downloading"))
+        await message.reply(t(lang, "already_downloading"))
         return
 
     ok, err = await can_download(user_id)
     if not ok:
-        await message.answer(err)
+        await message.reply(err)
         return
 
     result = detect_platform(url)
     if not result:
-        await message.answer(t(lang, "unrecognized_link"))
+        await message.reply(t(lang, "unrecognized_link"))
         return
 
     platform, video_id = result
     pinfo = get_platform_info(platform)
 
     if not await _platform_enabled(platform):
-        await message.answer(t(lang, "feature_disabled"))
+        await message.reply(t(lang, "feature_disabled"))
         return
 
     if platform == "instagram" and "stories/" in url and not video_id.isdigit():
@@ -234,15 +234,15 @@ async def handle_link(message: Message, bot: Bot):
 
     if is_group and group_mode in ("video", "audio"):
         quality = "audio" if group_mode == "audio" else "best"
-        loading = await message.answer(t(lang, "analyzing"))
+        loading = await message.reply(t(lang, "analyzing"))
         short_id = store_url(url, platform)
         await process_quality_download(
             bot, user_id, quality, short_id, message.chat.id, loading,
-            via_user=message.from_user,
+            via_user=message.from_user, reply_to_message_id=message.message_id,
         )
         return
 
-    loading = await message.answer(t(lang, "analyzing"))
+    loading = await message.reply(t(lang, "analyzing"))
 
     # TikTok: skip the get_info gate (often fails even when download works)
     if platform == "tiktok":
@@ -291,10 +291,18 @@ async def process_download(callback: CallbackQuery, bot: Bot):
     quality = parts[1]
     short_id = parts[2]
     await callback.answer()
-    await process_quality_download(bot, user_id, quality, short_id, callback.message.chat.id, callback.message, via_user=callback.from_user)
+    # Reply the result to the original link message. The buttons message
+    # (callback.message) was sent as a reply to that link, so its
+    # reply_to_message points back to it.
+    orig = callback.message.reply_to_message
+    reply_to_id = orig.message_id if orig else None
+    await process_quality_download(
+        bot, user_id, quality, short_id, callback.message.chat.id, callback.message,
+        via_user=callback.from_user, reply_to_message_id=reply_to_id,
+    )
 
 
-async def process_quality_download(bot: Bot, user_id: int, quality: str, short_id: str, chat_id: int, edit_msg=None, via_user=None):
+async def process_quality_download(bot: Bot, user_id: int, quality: str, short_id: str, chat_id: int, edit_msg=None, via_user=None, reply_to_message_id=None):
     """Download logic shared between regular and premium (Stars-paid) downloads."""
     lang = await get_user_language(user_id)
     audio_only = quality == "audio"
@@ -366,6 +374,7 @@ async def process_quality_download(bot: Bot, user_id: int, quality: str, short_i
                 await bot.send_video(
                     chat_id=chat_id, video=file, caption=caption,
                     parse_mode="HTML", supports_streaming=True,
+                    reply_to_message_id=reply_to_message_id if i == 1 else None,
                 )
                 cleanup_file(part_path)
             except Exception as e:
@@ -390,11 +399,15 @@ async def process_quality_download(bot: Bot, user_id: int, quality: str, short_i
 
         file = FSInputFile(result.file_path)
         if audio_only:
-            await bot.send_audio(chat_id=chat_id, audio=file, caption=caption, parse_mode="HTML")
+            await bot.send_audio(
+                chat_id=chat_id, audio=file, caption=caption, parse_mode="HTML",
+                reply_to_message_id=reply_to_message_id,
+            )
         else:
             await bot.send_video(
                 chat_id=chat_id, video=file, caption=caption,
                 parse_mode="HTML", supports_streaming=True,
+                reply_to_message_id=reply_to_message_id,
             )
 
         await record_download(user_id, url, platform, result.title, result.file_size)
