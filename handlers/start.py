@@ -130,52 +130,6 @@ async def btn_admin(message: Message):
     await cmd_admin(message)
 
 
-# ─── Button: Add to Group ───────────────────────────────────
-@router.message(F.text.func(lambda txt: txt and any(
-    txt == t(code, "btn_add_group") for code in LANGUAGES
-)))
-async def btn_add_group(message: Message):
-    if not await _buttons_allowed(message):
-        return
-    lang = await get_user_language(message.from_user.id)
-    # Create inline keyboard with group/channel selection
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text=t(lang, "btn_add_group"),
-            url=f"https://t.me/{(await message.bot.me()).username}?startgroup=true"
-        )],
-        [InlineKeyboardButton(
-            text=t(lang, "btn_add_channel"),
-            url=f"https://t.me/{(await message.bot.me()).username}?startchannel=true"
-        )],
-    ])
-    await message.answer(t(lang, "add_group_help"), parse_mode="HTML", reply_markup=kb)
-
-
-# ─── Button: Add to Channel ─────────────────────────────────
-@router.message(F.text.func(lambda txt: txt and any(
-    txt == t(code, "btn_add_channel") for code in LANGUAGES
-)))
-async def btn_add_channel(message: Message):
-    if not await _buttons_allowed(message):
-        return
-    lang = await get_user_language(message.from_user.id)
-    # Create inline keyboard with channel selection
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text=t(lang, "btn_add_channel"),
-            url=f"https://t.me/{(await message.bot.me()).username}?startchannel=true"
-        )],
-        [InlineKeyboardButton(
-            text=t(lang, "btn_add_group"),
-            url=f"https://t.me/{(await message.bot.me()).username}?startgroup=true"
-        )],
-    ])
-    await message.answer(t(lang, "add_group_help"), parse_mode="HTML", reply_markup=kb)
-
-
 # Keep /help and /stats as fallback commands too
 @router.message(Command("help"))
 async def cmd_help(message: Message):
