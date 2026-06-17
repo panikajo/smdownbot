@@ -1,3 +1,4 @@
+import logging
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
@@ -8,6 +9,8 @@ from database.db import (
 )
 from services.i18n_admin import ta
 from config import config
+
+logger = logging.getLogger("smdownbot")
 
 router = Router()
 
@@ -347,6 +350,8 @@ async def cmd_broadcast(message: Message):
         await message.answer(ta(lang, "bc_usage"))
         return
     text = parts[1]
+    # Escape HTML entities in broadcast text to prevent parse errors
+    text = text.replace("\u003c", "\u0026lt;").replace("\u003e", "\u0026gt;")
     users = await get_all_users()
     sent, failed = 0, 0
     status_msg = await message.answer(ta(lang, "bc_progress", n=len(users)))
@@ -354,8 +359,9 @@ async def cmd_broadcast(message: Message):
         try:
             await message.bot.send_message(u["user_id"], text)
             sent += 1
-        except Exception:
+        except Exception as e:
             failed += 1
+            logger.warning(f"Broadcast failed for user {u['user_id']}: {e}")
     await status_msg.edit_text(ta(lang, "bc_done", sent=sent, failed=failed))
 
 
